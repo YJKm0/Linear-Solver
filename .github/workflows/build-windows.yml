@@ -1,0 +1,54 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Package Single Setup EXE
+        shell: pwsh
+        run: |
+          $exe = (Get-ChildItem "build\windows\x64\runner\Release\*.exe" | Select-Object -First 1).Name
+          @(
+            '[Setup]'
+            'AppName=LinearSolver'
+            'AppVersion=1.0'
+            'DefaultDirName={autopf}\MyFlutterApp'
+            'OutputDir=installer'
+            'OutputBaseFilename=App_Setup'
+            'Compression=lzma2'
+            'SolidCompression=yes'
+            '[Files]'
+            'Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs'
+            '[Icons]'
+            "Name: `"{autodesktop}\MyFlutterApp`"; Filename: `"{app}\$exe`""
+          ) | Set-Content setup.iss
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" setup.iss
+
+      - name: Upload Single EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: installer/App_Setup.exe

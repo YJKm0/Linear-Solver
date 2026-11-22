@@ -1,0 +1,2473 @@
+==> lib/core/math/matrix.dart <==
+import 'rational.dart';
+
+typedef AugmentedMatrix = List<List<Rational>>;
+
+extension AugmentedMatrixX on AugmentedMatrix {
+  AugmentedMatrix copy() => map((row) => List<Rational>.from(row)).toList();
+
+  void swapRows(int first, int second) {
+    final temp = this[first];
+    this[first] = this[second];
+    this[second] = temp;
+  }
+}
+
+==> lib/core/math/rational.dart <==
+class Rational {
+  final int numerator;
+  final int denominator;
+
+  const Rational._(this.numerator, this.denominator);
+
+  factory Rational.parse(String input) {
+    final text = input.trim();
+    if (text.isEmpty) return Rational.zero;
+    if (text.contains('/')) {
+      final parts = text.split('/');
+      if (parts.length != 2) throw FormatException('Invalid fraction: $input');
+      final numerator = int.tryParse(parts[0].trim());
+      final denominator = int.tryParse(parts[1].trim());
+      if (numerator == null || denominator == null || denominator == 0) {
+        throw FormatException('Invalid fraction: $input');
+      }
+      return Rational(numerator, denominator);
+    }
+    if (text.contains('.')) {
+      final negative = text.startsWith('-');
+      final unsigned = text.replaceFirst('-', '');
+      final parts = unsigned.split('.');
+      if (parts.length != 2) {
+        throw FormatException('Invalid decimal: $input');
+      }
+      final whole = int.tryParse(parts.first);
+      final digits = parts[1].replaceAll(RegExp(r'0+$'), '');
+      final fraction = digits.isEmpty ? 0 : int.tryParse(digits);
+      if (whole == null || fraction == null) {
+        throw FormatException('Invalid decimal: $input');
+      }
+      final scale = _tenPow(digits.length);
+      var result = whole * scale + fraction;
+      if (negative) result = -result;
+      return Rational(result, scale);
+    }
+    final value = int.tryParse(text);
+    if (value == null) throw FormatException('Invalid number: $input');
+    return Rational(value);
+  }
+
+  factory Rational(int numerator, [int denominator = 1]) {
+    if (denominator == 0) throw ArgumentError('Denominator cannot be zero');
+    var n = numerator;
+    var d = denominator;
+    if (d < 0) {
+      n = -n;
+      d = -d;
+    }
+    final divisor = _gcd(n.abs(), d);
+    return Rational._(n ~/ divisor, d ~/ divisor);
+  }
+
+  static const Rational zero = Rational._(0, 1);
+  static const Rational one = Rational._(1, 1);
+
+  Rational operator +(Rational other) => Rational(
+    numerator * other.denominator + other.numerator * denominator,
+    denominator * other.denominator,
+  );
+  Rational operator -(Rational other) => Rational(
+    numerator * other.denominator - other.numerator * denominator,
+    denominator * other.denominator,
+  );
+  Rational operator *(Rational other) =>
+      Rational(numerator * other.numerator, denominator * other.denominator);
+  Rational operator /(Rational other) {
+    if (other.numerator == 0) throw ArgumentError('Division by zero');
+    return Rational(
+      numerator * other.denominator,
+      denominator * other.numerator,
+    );
+  }
+
+  Rational operator -() => Rational(-numerator, denominator);
+
+  bool get isZero => numerator == 0;
+  bool get isNegative => numerator < 0;
+
+  @override
+  bool operator ==(Object other) =>
+      other is Rational &&
+      numerator == other.numerator &&
+      denominator == other.denominator;
+  @override
+  int get hashCode => Object.hash(numerator, denominator);
+
+  @override
+  String toString() =>
+      denominator == 1 ? '$numerator' : '$numerator/$denominator';
+
+  static int _gcd(int a, int b) {
+    while (b != 0) {
+      final r = a % b;
+      a = b;
+      b = r;
+    }
+    return a == 0 ? 1 : a;
+  }
+
+  static int _tenPow(int exponent) {
+    var value = 1;
+    for (var i = 0; i < exponent; i++) {
+      value *= 10;
+    }
+    return value;
+  }
+}
+
+==> lib/core/theme/app_theme.dart <==
+import 'package:flutter/material.dart';
+
+class AppTheme {
+  AppTheme._();
+
+  static const Color inkBlack = Color(0xFF0C1618);
+  static const Color brandy = Color(0xFF772F1A);
+  static const Color seaweed = Color(0xFF21A179);
+  static const Color jasmine = Color(0xFFF4D58D);
+  static const Color canvasBg = Color(0xFFEFF1ED);
+  static const Color surfaceWhite = Color(0xFFFFFFFF);
+  static const Color subtleFill = Color(0xFFF1F3F5);
+  static const Color borderSubtle = Color(0xFFDCE0D9);
+  static const Color borderStrong = Color(0xFFCBD5E1);
+  static const Color textMuted = Color(0xFF52606D);
+
+  static const Color pivotBg = jasmine;
+  static const Color pivotBorder = inkBlack;
+  static const Color pivotText = inkBlack;
+  static final Color sourceRowBg = seaweed.withValues(alpha: 0.14);
+  static final Color sourceRowBorder = seaweed.withValues(alpha: 0.45);
+  static final Color targetRowBg = brandy.withValues(alpha: 0.11);
+  static final Color targetRowBorder = brandy.withValues(alpha: 0.40);
+  static const Color statusUnique = seaweed;
+  static const Color statusInfinite = jasmine;
+  static const Color statusNoSolution = brandy;
+
+  static const TextStyle matrixNumberStyle = TextStyle(
+    fontSize: 21,
+    fontWeight: FontWeight.w700,
+    color: inkBlack,
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
+
+  static const TextStyle inputNumberStyle = TextStyle(
+    fontSize: 16.5,
+    fontWeight: FontWeight.w700,
+    color: inkBlack,
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
+
+  static ThemeData get lightTheme {
+    const colorScheme = ColorScheme.light(
+      primary: inkBlack,
+      onPrimary: Colors.white,
+      secondary: seaweed,
+      onSecondary: Colors.white,
+      tertiary: jasmine,
+      onTertiary: inkBlack,
+      error: brandy,
+      onError: Colors.white,
+      surface: surfaceWhite,
+      onSurface: inkBlack,
+      outline: borderStrong,
+      outlineVariant: borderSubtle,
+    );
+
+    final textTheme = const TextTheme(
+      displayLarge: TextStyle(
+        fontSize: 32,
+        fontWeight: FontWeight.w700,
+        color: inkBlack,
+        height: 1.2,
+      ),
+      displayMedium: TextStyle(
+        fontSize: 28,
+        fontWeight: FontWeight.w700,
+        color: inkBlack,
+        height: 1.25,
+      ),
+      displaySmall: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+        color: inkBlack,
+        height: 1.25,
+      ),
+      headlineLarge: TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        color: inkBlack,
+        height: 1.3,
+      ),
+      headlineMedium: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        color: inkBlack,
+        height: 1.3,
+      ),
+      headlineSmall: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: inkBlack,
+        height: 1.3,
+      ),
+      titleLarge: TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.w600,
+        color: inkBlack,
+        height: 1.35,
+      ),
+      titleMedium: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: inkBlack,
+        height: 1.35,
+      ),
+      titleSmall: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: inkBlack,
+        height: 1.35,
+      ),
+      bodyLarge: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+        color: inkBlack,
+        height: 1.45,
+      ),
+      bodyMedium: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        color: inkBlack,
+        height: 1.45,
+      ),
+      bodySmall: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
+        color: textMuted,
+        height: 1.45,
+      ),
+      labelLarge: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: inkBlack,
+        height: 1.35,
+      ),
+      labelMedium: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: textMuted,
+        height: 1.35,
+      ),
+      labelSmall: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: textMuted,
+        height: 1.35,
+      ),
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: canvasBg,
+      canvasColor: canvasBg,
+      textTheme: textTheme,
+      cardTheme: const CardThemeData(
+        color: surfaceWhite,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(14)),
+          side: BorderSide(color: borderSubtle, width: 1),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: inkBlack,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: seaweed,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          minimumSize: const Size(0, 42),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: inkBlack,
+          backgroundColor: surfaceWhite,
+          side: const BorderSide(color: borderStrong, width: 1.2),
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: brandy,
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return inkBlack;
+            }
+            return surfaceWhite;
+          }),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return Colors.white;
+            }
+            return inkBlack;
+          }),
+          side: WidgetStateProperty.all(
+            const BorderSide(color: borderStrong, width: 1.2),
+          ),
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          textStyle: WidgetStateProperty.all(
+            const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: subtleFill,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 11,
+        ),
+        hintStyle: const TextStyle(fontSize: 13, color: textMuted),
+        labelStyle: const TextStyle(fontSize: 13, color: textMuted),
+        floatingLabelStyle: const TextStyle(fontSize: 13, color: seaweed),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: borderStrong, width: 1),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: borderStrong, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: seaweed, width: 1.8),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: brandy, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: brandy, width: 1.5),
+        ),
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: seaweed,
+        inactiveTrackColor: borderSubtle,
+        thumbColor: inkBlack,
+        overlayColor: seaweed.withValues(alpha: 0.14),
+        trackHeight: 4,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.white;
+          }
+          return textMuted;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return seaweed;
+          }
+          return borderSubtle;
+        }),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: inkBlack,
+          hoverColor: inkBlack.withValues(alpha: 0.06),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: borderSubtle,
+        thickness: 1,
+        space: 1,
+      ),
+    );
+  }
+}
+
+==> lib/main.dart <==
+import 'package:flutter/material.dart';
+import 'package:linear_algebra_me/core/theme/app_theme.dart';
+import 'package:window_manager/window_manager.dart';
+
+import 'utils/app_constants.dart';
+import 'viewmodels/solver_viewmodel.dart';
+import 'views/screens/workspace_screen.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+
+  await windowManager.waitUntilReadyToShow(
+    const WindowOptions(
+      size: Size(
+        AppConstants.defaultWindowWidth,
+        AppConstants.defaultWindowHeight,
+      ),
+      minimumSize: Size(
+        AppConstants.minWindowWidth,
+        AppConstants.minWindowHeight,
+      ),
+      center: true,
+      title: 'Linear Algebra Solver',
+    ),
+    () async {
+      await windowManager.show();
+      await windowManager.focus();
+    },
+  );
+
+  runApp(const MainApp());
+}
+
+class MainApp extends StatefulWidget {
+  const MainApp({super.key});
+
+  @override
+  State<MainApp> createState() => _MainAppState();
+}
+
+class _MainAppState extends State<MainApp> {
+  late final SolverViewModel viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    viewModel = SolverViewModel();
+  }
+
+  @override
+  void dispose() {
+    viewModel.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      home: WorkspaceScreen(viewModel: viewModel),
+    );
+  }
+}
+
+==> lib/models/solution_result.dart <==
+enum SolutionType { unique, infinite, noSolution }
+
+class SolutionResult {
+  final SolutionType type;
+  final List<String> values;
+  final Map<int, String> parametricExpressions;
+  final String summary;
+
+  const SolutionResult({
+    required this.type,
+    this.values = const [],
+    this.parametricExpressions = const {},
+    required this.summary,
+  });
+}
+
+==> lib/models/solver_step.dart <==
+import '../core/math/rational.dart';
+
+class SolverStep {
+  final List<List<Rational>> matrix;
+  final String operationType;
+  final String description;
+  final String formula;
+  final int? pivotRow;
+  final int? pivotCol;
+  final int? sourceRow;
+  final int? targetRow;
+
+  const SolverStep({
+    required this.matrix,
+    required this.operationType,
+    required this.description,
+    required this.formula,
+    this.pivotRow,
+    this.pivotCol,
+    this.sourceRow,
+    this.targetRow,
+  });
+
+  List<List<Rational>> get snapshot =>
+      matrix.map((row) => List<Rational>.from(row)).toList();
+}
+
+==> lib/services/gaussian_service.dart <==
+import '../core/math/matrix.dart';
+import '../core/math/rational.dart';
+import '../models/solution_result.dart';
+import '../models/solver_step.dart';
+import 'linear_solver_service.dart';
+
+class GaussianService extends LinearSolverService {
+  @override
+  ({SolutionResult solution, List<SolverStep> steps}) solve(
+    AugmentedMatrix matrix,
+  ) {
+    final work = matrix.copy();
+    final rows = work.length;
+    final cols = rows == 0 ? 0 : work.first.length - 1;
+    final elimination = forwardEliminate(work, eliminateAbove: false);
+    final steps = elimination.steps;
+    final pivotRow = elimination.pivotRow;
+
+    final rank = _coefficientRank(work);
+    final augmentedRank = _augmentedRank(work);
+    late final SolutionResult solution;
+    if (rank < augmentedRank) {
+      solution = const SolutionResult(
+        type: SolutionType.noSolution,
+        summary: 'No solution',
+      );
+    } else if (rank < cols) {
+      solution = _parametricSolution(work);
+    } else {
+      final values = List<String>.filled(cols, '0');
+      for (var r = cols - 1; r >= 0; r--) {
+        var pivotCol = -1;
+        for (var c = 0; c < cols; c++) {
+          if (!work[r][c].isZero) {
+            pivotCol = c;
+            break;
+          }
+        }
+        if (pivotCol < 0) continue;
+        var value = work[r][cols];
+        for (var c = pivotCol + 1; c < cols; c++) {
+          value = value - work[r][c] * Rational.parse(values[c]);
+        }
+        values[pivotCol] = (value / work[r][pivotCol]).toString();
+      }
+      solution = SolutionResult(
+        type: SolutionType.unique,
+        values: values,
+        summary: 'Unique solution',
+      );
+      steps.add(
+        SolverStep(
+          matrix: work.copy(),
+          operationType: 'BACK-SUB',
+          description:
+              'Use back-substitution to solve from the last row upward',
+          formula: values
+              .asMap()
+              .entries
+              .map((entry) => 'x${subscript(entry.key + 1)} = ${entry.value}')
+              .join(', '),
+          pivotRow: cols - 1,
+          pivotCol: cols - 1,
+        ),
+      );
+    }
+    steps.add(
+      SolverStep(
+        matrix: work.copy(),
+        operationType: 'COMPLETE',
+        description: solution.summary,
+        formula: 'Complete',
+        pivotRow: pivotRow > 0 ? pivotRow - 1 : null,
+      ),
+    );
+    return (solution: solution, steps: steps);
+  }
+
+  int _coefficientRank(AugmentedMatrix matrix) {
+    if (matrix.isEmpty) return 0;
+    var rank = 0;
+    final cols = matrix.first.length - 1;
+    for (var r = 0; r < matrix.length; r++) {
+      for (var c = 0; c < cols; c++) {
+        if (!matrix[r][c].isZero) {
+          rank++;
+          break;
+        }
+      }
+    }
+    return rank;
+  }
+
+  int _augmentedRank(AugmentedMatrix matrix) {
+    if (matrix.isEmpty) return 0;
+    var rank = 0;
+    for (var r = 0; r < matrix.length; r++) {
+      if (matrix[r].any((value) => !value.isZero)) rank++;
+    }
+    return rank;
+  }
+
+  SolutionResult _parametricSolution(AugmentedMatrix matrix) {
+    final cols = matrix.first.length - 1;
+    final pivotColumns = <int>{};
+    for (var r = 0; r < matrix.length; r++) {
+      for (var c = 0; c < cols; c++) {
+        if (!matrix[r][c].isZero) {
+          pivotColumns.add(c);
+          break;
+        }
+      }
+    }
+    final expressions = <int, ParametricExpression>{};
+    for (var c = 0; c < cols; c++) {
+      if (!pivotColumns.contains(c)) {
+        expressions[c] = ParametricExpression.free(c);
+      }
+    }
+    for (var r = matrix.length - 1; r >= 0; r--) {
+      var pivotCol = -1;
+      for (var c = 0; c < cols; c++) {
+        if (!matrix[r][c].isZero) {
+          pivotCol = c;
+          break;
+        }
+      }
+      if (pivotCol < 0) continue;
+
+      final pivot = matrix[r][pivotCol];
+      var expression = ParametricExpression(matrix[r][cols] / pivot);
+      for (var c = pivotCol + 1; c < cols; c++) {
+        if (!matrix[r][c].isZero) {
+          final coefficient = -matrix[r][c] / pivot;
+          expression = expression.add(expressions[c]!.scaled(coefficient));
+        }
+      }
+      expressions[pivotCol] = expression;
+    }
+    return SolutionResult(
+      type: SolutionType.infinite,
+      parametricExpressions: {
+        for (final entry in expressions.entries)
+          entry.key: pivotColumns.contains(entry.key)
+              ? formatParametricExpression(entry.value)
+              : 'free',
+      },
+      summary: 'Infinitely many solutions',
+    );
+  }
+}
+
+==> lib/services/gauss_jordan_service.dart <==
+import '../core/math/matrix.dart';
+import '../core/math/rational.dart';
+import '../models/solution_result.dart';
+import '../models/solver_step.dart';
+import 'linear_solver_service.dart';
+
+class GaussJordanService extends LinearSolverService {
+  @override
+  ({SolutionResult solution, List<SolverStep> steps}) solve(
+    AugmentedMatrix matrix,
+  ) {
+    final work = matrix.copy();
+    final rows = work.length;
+    final cols = rows == 0 ? 0 : work.first.length - 1;
+    final elimination = forwardEliminate(work, eliminateAbove: true);
+    final steps = elimination.steps;
+    final pivotRow = elimination.pivotRow;
+
+    for (var r = 0; r < rows; r++) {
+      var coefficientZero = true;
+      for (var c = 0; c < cols; c++) {
+        if (!work[r][c].isZero) coefficientZero = false;
+      }
+      if (coefficientZero && !work[r][cols].isZero) {
+        final result = const SolutionResult(
+          type: SolutionType.noSolution,
+          summary: 'No solution',
+        );
+        steps.add(
+          SolverStep(
+            matrix: work.copy(),
+            operationType: 'COMPLETE',
+            description: result.summary,
+            formula: 'Complete',
+          ),
+        );
+        return (solution: result, steps: steps);
+      }
+    }
+
+    final pivotColumns = elimination.pivotColumns;
+
+    late final SolutionResult solution;
+    if (pivotColumns.length == cols) {
+      final values = List<String>.filled(cols, '0');
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          if (work[r][c] == Rational.one && pivotColumns.contains(c)) {
+            values[c] = work[r][cols].toString();
+          }
+        }
+      }
+      solution = SolutionResult(
+        type: SolutionType.unique,
+        values: values,
+        summary: 'Unique solution',
+      );
+    } else {
+      final expressions = <int, ParametricExpression>{};
+      for (var c = 0; c < cols; c++) {
+        if (!pivotColumns.contains(c)) {
+          expressions[c] = ParametricExpression.free(c);
+        }
+      }
+      for (var r = 0; r < rows; r++) {
+        var pivotCol = -1;
+        for (var c = 0; c < cols; c++) {
+          if (work[r][c] == Rational.one && pivotColumns.contains(c)) {
+            pivotCol = c;
+            break;
+          }
+        }
+        if (pivotCol < 0) continue;
+        var expression = ParametricExpression(
+          work[r][cols] / work[r][pivotCol],
+        );
+        for (var c = 0; c < cols; c++) {
+          if (c != pivotCol && !work[r][c].isZero) {
+            final coefficient = -work[r][c] / work[r][pivotCol];
+            expression = expression.add(expressions[c]!.scaled(coefficient));
+          }
+        }
+        expressions[pivotCol] = expression;
+      }
+      solution = SolutionResult(
+        type: SolutionType.infinite,
+        parametricExpressions: {
+          for (final entry in expressions.entries)
+            entry.key: pivotColumns.contains(entry.key)
+                ? formatParametricExpression(entry.value)
+                : 'free',
+        },
+        summary: 'Infinitely many solutions',
+      );
+    }
+    steps.add(
+      SolverStep(
+        matrix: work.copy(),
+        operationType: 'COMPLETE',
+        description: solution.summary,
+        formula: 'Complete',
+        pivotRow: pivotRow > 0 ? pivotRow - 1 : null,
+      ),
+    );
+    return (solution: solution, steps: steps);
+  }
+}
+
+==> lib/services/linear_solver_service.dart <==
+import '../core/math/matrix.dart';
+import '../core/math/rational.dart';
+import '../models/solution_result.dart';
+import '../models/solver_step.dart';
+import '../utils/app_constants.dart';
+
+abstract class LinearSolverService {
+  ({SolutionResult solution, List<SolverStep> steps}) solve(
+    AugmentedMatrix matrix,
+  );
+
+  String rowLabel(int index) => 'R${subscript(index + 1)}';
+
+  String formatFactor(Rational value) => value.denominator == 1
+      ? value.numerator.toString()
+      : '${value.numerator}/${value.denominator}';
+
+  String parenthesize(Rational value) => value.denominator == 1
+      ? value.numerator.toString()
+      : '(${value.numerator}/${value.denominator})';
+
+  String subscript(int value) =>
+      value >= 1 && value <= AppConstants.variableSubscripts.length
+      ? AppConstants.variableSubscripts[value - 1]
+      : value.toString().split('').map((digit) {
+          const digits = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
+          return digits[int.parse(digit)];
+        }).join();
+
+  String formatParametricExpression(ParametricExpression expression) {
+    var result = '';
+    if (!expression.constant.isZero) result = expression.constant.toString();
+
+    final sortedCoefficients = expression.coefficients.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    for (final entry in sortedCoefficients) {
+      final c = entry.key;
+      final coefficient = entry.value;
+      if (coefficient.isZero) continue;
+
+      final variable = 'x${subscript(c + 1)}';
+      final magnitude = coefficient.isNegative ? -coefficient : coefficient;
+      final coefficientText = magnitude == Rational.one ? '' : '$magnitude';
+      final term = '$coefficientText$variable';
+
+      if (coefficient.isNegative) {
+        result = result.isEmpty ? '- $term' : '$result - $term';
+      } else {
+        result = result.isEmpty ? term : '$result + $term';
+      }
+    }
+
+    return result.isEmpty ? '0' : result;
+  }
+
+  ({List<SolverStep> steps, List<int> pivotColumns, int pivotRow})
+  forwardEliminate(AugmentedMatrix work, {required bool eliminateAbove}) {
+    final rows = work.length;
+    final cols = rows == 0 ? 0 : work.first.length - 1;
+    final pivotColumns = <int>[];
+    final steps = <SolverStep>[
+      SolverStep(
+        matrix: work.copy(),
+        operationType: 'INITIAL',
+        description: 'Begin with the entered augmented matrix',
+        formula: '[A | b]',
+      ),
+    ];
+    var pivotRow = 0;
+
+    for (var col = 0; col < cols && pivotRow < rows; col++) {
+      var selected = pivotRow;
+      while (selected < rows && work[selected][col].isZero) {
+        selected++;
+      }
+      if (selected == rows) continue;
+      if (selected != pivotRow) {
+        work.swapRows(selected, pivotRow);
+        steps.add(
+          SolverStep(
+            matrix: work.copy(),
+            operationType: 'SWAP',
+            description: eliminateAbove
+                ? 'Swap ${rowLabel(pivotRow)} and ${rowLabel(selected)} to bring a non-zero pivot into position'
+                : 'Swap R${pivotRow + 1} and R${selected + 1} to bring a non-zero pivot into position',
+            formula: '${rowLabel(pivotRow)} ↔ ${rowLabel(selected)}',
+            pivotRow: pivotRow,
+            pivotCol: col,
+            sourceRow: selected,
+            targetRow: pivotRow,
+          ),
+        );
+      }
+
+      final pivot = work[pivotRow][col];
+      if (pivot != Rational.one) {
+        for (var c = col; c <= cols; c++) {
+          work[pivotRow][c] = work[pivotRow][c] / pivot;
+        }
+        steps.add(
+          SolverStep(
+            matrix: work.copy(),
+            operationType: 'SCALE',
+            description: eliminateAbove
+                ? 'Scale ${rowLabel(pivotRow)} so the leading entry becomes 1'
+                : 'Scale ${rowLabel(pivotRow)} by ${formatFactor(Rational.one / pivot)} so its leading entry becomes 1',
+            formula:
+                '${rowLabel(pivotRow)} ← ${parenthesize(Rational.one / pivot)}·${rowLabel(pivotRow)}',
+            pivotRow: pivotRow,
+            pivotCol: col,
+            targetRow: pivotRow,
+          ),
+        );
+      }
+
+      pivotColumns.add(col);
+      final startRow = eliminateAbove ? 0 : pivotRow + 1;
+      final endRow = eliminateAbove ? rows : rows;
+      for (var r = startRow; r < endRow; r++) {
+        if (eliminateAbove && r == pivotRow) continue;
+        if (!eliminateAbove && r <= pivotRow) continue;
+        final factor = work[r][col];
+        if (factor.isZero) continue;
+        for (var c = col; c <= cols; c++) {
+          work[r][c] = work[r][c] - factor * work[pivotRow][c];
+        }
+        steps.add(
+          SolverStep(
+            matrix: work.copy(),
+            operationType: 'ELIMINATE',
+            description:
+                'Eliminate x${subscript(col + 1)} in ${rowLabel(r)} using the pivot in ${rowLabel(pivotRow)}',
+            formula:
+                '${rowLabel(r)} ← ${rowLabel(r)} - ${formatFactor(factor)}·${rowLabel(pivotRow)}',
+            pivotRow: pivotRow,
+            pivotCol: col,
+            sourceRow: pivotRow,
+            targetRow: r,
+          ),
+        );
+      }
+      pivotRow++;
+    }
+
+    return (steps: steps, pivotColumns: pivotColumns, pivotRow: pivotRow);
+  }
+}
+
+class ParametricExpression {
+  final Rational constant;
+  final Map<int, Rational> coefficients;
+
+  ParametricExpression(this.constant, [Map<int, Rational>? coefficients])
+    : coefficients = coefficients ?? <int, Rational>{};
+
+  ParametricExpression.free(int variable)
+    : constant = Rational.zero,
+      coefficients = <int, Rational>{variable: Rational.one};
+
+  ParametricExpression scaled(Rational factor) {
+    final scaledCoefficients = <int, Rational>{};
+    for (final entry in coefficients.entries) {
+      scaledCoefficients[entry.key] = entry.value * factor;
+    }
+    return ParametricExpression(constant * factor, scaledCoefficients);
+  }
+
+  ParametricExpression add(ParametricExpression other) {
+    final combined = Map<int, Rational>.from(coefficients);
+    for (final entry in other.coefficients.entries) {
+      combined[entry.key] =
+          (combined[entry.key] ?? Rational.zero) + entry.value;
+    }
+    return ParametricExpression(constant + other.constant, combined);
+  }
+}
+
+==> lib/utils/app_constants.dart <==
+class AppConstants {
+  AppConstants._();
+
+  /// Smallest supported matrix dimension.
+  static const int minDimension = 2;
+
+  /// Largest supported matrix dimension.
+  static const int maxDimension = 6;
+  static const int defaultRows = 3;
+  static const int defaultCols = 3;
+  static const List<int> allowedDimensions = [2, 3, 4, 5, 6];
+  static const List<String> variableSubscripts = ['₁', '₂', '₃', '₄', '₅', '₆'];
+
+  static const int sidebarFlex = 4;
+  static const int stageFlex = 6;
+  static const int bannerFlex = 2;
+  static const int matrixStageFlex = 8;
+  static const int controlsFlex = 2;
+
+  static const double screenPadding = 16.0;
+  static const double cardPadding = 18.0;
+  static const double sectionSpacing = 14.0;
+  static const double inputCellHeight = 52.0;
+  static const double stageCellWidth = 88.0;
+  static const double stageCellHeight = 62.0;
+
+  static const double minWindowWidth = 1280.0;
+  static const double minWindowHeight = 780.0;
+  static const double defaultWindowWidth = 1440.0;
+  static const double defaultWindowHeight = 880.0;
+
+  static const Duration stepTransitionDuration = Duration(milliseconds: 420);
+  static const List<double> playbackSpeeds = [0.5, 1.0, 1.5, 2.0];
+  static const double defaultPlaybackSpeed = 1.0;
+  static const int baseStepIntervalMs = 1800;
+}
+
+==> lib/utils/matrix_presets.dart <==
+enum PresetType { unique, infinite, noSolution }
+
+class MatrixPresets {
+  MatrixPresets._();
+
+  static const unique = <List<String>>[
+    ['2', '1', '-1', '8'],
+    ['-3', '-1', '2', '-11'],
+    ['-2', '1', '2', '-3'],
+  ];
+
+  static const infinite = <List<String>>[
+    ['1', '2', '-1', '3'],
+    ['2', '4', '-2', '6'],
+    ['-1', '-2', '1', '-3'],
+  ];
+
+  static const noSolution = <List<String>>[
+    ['1', '1', '1', '6'],
+    ['2', '2', '2', '12'],
+    ['1', '1', '1', '7'],
+  ];
+
+  static List<List<String>> forType(PresetType type) {
+    final source = type == PresetType.unique
+        ? unique
+        : type == PresetType.infinite
+        ? infinite
+        : noSolution;
+    return source.map((row) => List<String>.from(row)).toList();
+  }
+}
+
+==> lib/viewmodels/solver_viewmodel.dart <==
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+
+import '../core/math/rational.dart';
+import '../models/solution_result.dart';
+import '../models/solver_step.dart';
+import '../services/gauss_jordan_service.dart';
+import '../services/gaussian_service.dart';
+import '../utils/app_constants.dart';
+import '../utils/matrix_presets.dart';
+
+class SolverViewModel extends ChangeNotifier {
+  int rows = AppConstants.defaultRows;
+  int cols = AppConstants.defaultCols;
+  bool isGaussJordan = true;
+  late List<List<String>> grid;
+  int gridVersion = 0;
+  String? errorMessage;
+  PresetType? _selectedPreset;
+  PresetType? get selectedPreset => _selectedPreset;
+
+  List<SolverStep> steps = [];
+  SolutionResult? solutionResult;
+  int currentStepIndex = 0;
+  bool isPlaying = false;
+  double playbackSpeed = AppConstants.defaultPlaybackSpeed;
+  Timer? _timer;
+
+  SolverViewModel() {
+    grid = List.generate(rows, (_) => List.generate(cols + 1, (_) => ''));
+  }
+
+  SolverStep? get currentStep => steps.isEmpty ? null : steps[currentStepIndex];
+  bool get hasSolution => solutionResult != null;
+
+  void resizeGrid(int newRows, int newCols) {
+    if (newRows < AppConstants.minDimension ||
+        newRows > AppConstants.maxDimension ||
+        newCols < AppConstants.minDimension ||
+        newCols > AppConstants.maxDimension ||
+        (newRows == rows && newCols == cols)) {
+      return;
+    }
+    final updated = List.generate(newRows, (r) {
+      return List.generate(newCols + 1, (c) {
+        if (r < rows && c < cols) return grid[r][c];
+        if (r < rows && c == newCols) return grid[r][cols];
+        return '';
+      });
+    });
+    rows = newRows;
+    cols = newCols;
+    grid = updated;
+    gridVersion++;
+    _selectedPreset = null;
+    _resetSolution();
+  }
+
+  void updateCell(int r, int c, String val) {
+    grid[r][c] = val.trim();
+    _selectedPreset = null;
+    notifyListeners();
+  }
+
+  void clearGrid() {
+    grid = List.generate(rows, (_) => List.generate(cols + 1, (_) => ''));
+    gridVersion++;
+    _selectedPreset = null;
+    _resetSolution();
+  }
+
+  void applyPreset(PresetType type) {
+    rows = AppConstants.defaultRows;
+    cols = AppConstants.defaultCols;
+    grid = MatrixPresets.forType(type);
+    gridVersion++;
+    _selectedPreset = type;
+    _resetSolution();
+  }
+
+  void setMethod(bool isGaussJordanSelected) {
+    if (isGaussJordan == isGaussJordanSelected) return;
+    isGaussJordan = isGaussJordanSelected;
+    _resetSolution();
+  }
+
+  void solve() {
+    stopPlayback();
+    errorMessage = null;
+    try {
+      final matrix = List<List<Rational>>.generate(rows, (r) {
+        return List<Rational>.generate(cols + 1, (c) {
+          final text = grid[r][c].trim();
+          if (text.isEmpty) return Rational.zero;
+          return Rational.parse(text);
+        });
+      });
+      final result = isGaussJordan
+          ? GaussJordanService().solve(matrix)
+          : GaussianService().solve(matrix);
+      steps = result.steps;
+      solutionResult = result.solution;
+      currentStepIndex = 0;
+      if (steps.length > 1) {
+        isPlaying = true;
+        _restartTimer();
+      }
+    } on FormatException catch (error) {
+      steps = [];
+      solutionResult = null;
+      currentStepIndex = 0;
+      errorMessage = error.message;
+    } on ArgumentError catch (error) {
+      steps = [];
+      solutionResult = null;
+      currentStepIndex = 0;
+      errorMessage = error.message?.toString() ?? 'Invalid matrix value';
+    }
+    notifyListeners();
+  }
+
+  void nextStep() {
+    if (steps.isEmpty || currentStepIndex >= steps.length - 1) {
+      if (isPlaying) stopPlayback();
+      return;
+    }
+    currentStepIndex++;
+    if (currentStepIndex >= steps.length - 1 && isPlaying) {
+      stopPlayback();
+    }
+    notifyListeners();
+  }
+
+  void previousStep() {
+    if (steps.isEmpty || currentStepIndex == 0) return;
+    currentStepIndex--;
+    notifyListeners();
+  }
+
+  void goToStep(int index) {
+    if (steps.isEmpty) return;
+    currentStepIndex = index.clamp(0, steps.length - 1);
+    notifyListeners();
+  }
+
+  void togglePlayPause() {
+    if (steps.isEmpty) return;
+    if (isPlaying) {
+      stopPlayback();
+      notifyListeners();
+    } else {
+      if (currentStepIndex >= steps.length - 1) currentStepIndex = 0;
+      isPlaying = true;
+      notifyListeners();
+      _restartTimer();
+    }
+  }
+
+  void stopPlayback() {
+    _timer?.cancel();
+    _timer = null;
+    if (isPlaying) {
+      isPlaying = false;
+    }
+  }
+
+  void cyclePlaybackSpeed() {
+    final speeds = AppConstants.playbackSpeeds;
+    final index = speeds.indexOf(playbackSpeed);
+    playbackSpeed = speeds[(index + 1) < speeds.length ? index + 1 : 0];
+    if (isPlaying) _restartTimer();
+    notifyListeners();
+  }
+
+  void _restartTimer() {
+    _timer?.cancel();
+    final interval = Duration(
+      milliseconds: (AppConstants.baseStepIntervalMs / playbackSpeed).round(),
+    );
+    _timer = Timer.periodic(interval, (_) {
+      if (steps.isEmpty || currentStepIndex >= steps.length - 1) {
+        stopPlayback();
+        notifyListeners();
+        return;
+      }
+      currentStepIndex++;
+      if (currentStepIndex >= steps.length - 1) {
+        stopPlayback();
+      }
+      notifyListeners();
+    });
+  }
+
+  void _resetSolution() {
+    stopPlayback();
+    steps = [];
+    solutionResult = null;
+    currentStepIndex = 0;
+    errorMessage = null;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+}
+
+==> lib/views/screens/workspace_screen.dart <==
+import 'package:flutter/material.dart';
+
+import '../../core/theme/app_theme.dart';
+import '../../utils/app_constants.dart';
+import '../../utils/matrix_presets.dart';
+import '../../viewmodels/solver_viewmodel.dart';
+import '../widgets/animated_matrix_board.dart';
+import '../widgets/matrix_input_grid.dart';
+import '../widgets/operation_banner.dart';
+import '../widgets/playback_controls.dart';
+
+class WorkspaceScreen extends StatelessWidget {
+  const WorkspaceScreen({super.key, required this.viewModel});
+
+  final SolverViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Row(
+        children: [
+          Expanded(
+            flex: AppConstants.sidebarFlex,
+            child: Padding(
+              padding: const EdgeInsets.all(AppConstants.screenPadding),
+              child: _buildSidebar(),
+            ),
+          ),
+          Expanded(
+            flex: AppConstants.stageFlex,
+            child: Padding(
+              padding: const EdgeInsets.all(AppConstants.screenPadding),
+              child: Column(
+                children: [
+                  Expanded(
+                    flex: AppConstants.bannerFlex,
+                    child: ListenableBuilder(
+                      listenable: viewModel,
+                      builder: (context, _) =>
+                          OperationBanner(viewModel: viewModel),
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.screenPadding),
+                  Expanded(
+                    flex: AppConstants.matrixStageFlex,
+                    child: ListenableBuilder(
+                      listenable: viewModel,
+                      builder: (context, _) =>
+                          AnimatedMatrixBoard(viewModel: viewModel),
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.screenPadding),
+                  Expanded(
+                    flex: AppConstants.controlsFlex,
+                    child: ListenableBuilder(
+                      listenable: viewModel,
+                      builder: (context, _) =>
+                          PlaybackControls(viewModel: viewModel),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebar() {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppTheme.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: const BoxDecoration(color: AppTheme.inkBlack),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Linear Solver',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                ListenableBuilder(
+                  listenable: viewModel,
+                  builder: (context, _) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.jasmine,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      viewModel.isGaussJordan ? 'RREF' : 'REF',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.inkBlack,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(AppConstants.cardPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Rows',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            ListenableBuilder(
+                              listenable: viewModel,
+                              builder: (context, _) => _buildSizeDropdown(
+                                'Rows',
+                                viewModel.rows,
+                                (value) =>
+                                    viewModel.resizeGrid(value, viewModel.cols),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(10, 18, 10, 0),
+                        child: Text(
+                          '×',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.inkBlack,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Cols',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            ListenableBuilder(
+                              listenable: viewModel,
+                              builder: (context, _) => _buildSizeDropdown(
+                                'Cols',
+                                viewModel.cols,
+                                (value) =>
+                                    viewModel.resizeGrid(viewModel.rows, value),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppConstants.sectionSpacing),
+                  ListenableBuilder(
+                    listenable: viewModel,
+                    builder: (context, _) => SegmentedButton<bool>(
+                      style: ButtonStyle(
+                        side: WidgetStateProperty.all(
+                          const BorderSide(color: AppTheme.borderSubtle),
+                        ),
+                      ),
+                      segments: const [
+                        ButtonSegment(value: false, label: Text('Gaussian')),
+                        ButtonSegment(value: true, label: Text('Gauss-Jordan')),
+                      ],
+                      selected: {viewModel.isGaussJordan},
+                      onSelectionChanged: (selection) =>
+                          viewModel.setMethod(selection.first),
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.sectionSpacing),
+                  ListenableBuilder(
+                    listenable: viewModel,
+                    builder: (context, _) => Row(
+                      children: [
+                        Expanded(
+                          child: _PresetPill(
+                            label: 'Unique',
+                            dotColor: AppTheme.seaweed,
+                            type: PresetType.unique,
+                            selected:
+                                viewModel.selectedPreset == PresetType.unique,
+                            onTap: () =>
+                                viewModel.applyPreset(PresetType.unique),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: _PresetPill(
+                            label: 'Infinite',
+                            dotColor: AppTheme.jasmine,
+                            type: PresetType.infinite,
+                            selected:
+                                viewModel.selectedPreset == PresetType.infinite,
+                            onTap: () =>
+                                viewModel.applyPreset(PresetType.infinite),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: _PresetPill(
+                            label: 'No Sol',
+                            dotColor: AppTheme.brandy,
+                            type: PresetType.noSolution,
+                            selected:
+                                viewModel.selectedPreset ==
+                                PresetType.noSolution,
+                            onTap: () =>
+                                viewModel.applyPreset(PresetType.noSolution),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.sectionSpacing),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Augmented Matrix [A | b]',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.inkBlack,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: viewModel.clearGrid,
+                        child: const Text(
+                          'Clear',
+                          style: TextStyle(color: AppTheme.brandy),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.canvasBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.borderSubtle),
+                      ),
+                      child: Center(
+                        child: SingleChildScrollView(
+                          child: ListenableBuilder(
+                            listenable: viewModel,
+                            builder: (context, _) =>
+                                MatrixInputGrid(viewModel: viewModel),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.sectionSpacing),
+                  ElevatedButton.icon(
+                    onPressed: viewModel.solve,
+                    icon: const Icon(
+                      Icons.play_arrow_rounded,
+                      color: AppTheme.jasmine,
+                      size: 22,
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    label: const Text(
+                      'Solve & Visualize',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSizeDropdown(
+    String label,
+    int value,
+    ValueChanged<int> onChanged,
+  ) {
+    return DropdownButtonFormField<int>(
+      key: ValueKey('${label}_${value}_${viewModel.gridVersion}'),
+      initialValue: value,
+      dropdownColor: AppTheme.surfaceWhite,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: AppTheme.surfaceWhite,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppTheme.borderSubtle),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppTheme.borderSubtle),
+        ),
+      ),
+      items: AppConstants.allowedDimensions
+          .map(
+            (dimension) => DropdownMenuItem(
+              value: dimension,
+              child: Text(
+                '$dimension',
+                style: const TextStyle(color: AppTheme.inkBlack),
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: (value) {
+        if (value != null) onChanged(value);
+      },
+    );
+  }
+}
+
+class _PresetPill extends StatefulWidget {
+  const _PresetPill({
+    required this.label,
+    required this.dotColor,
+    required this.type,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color dotColor;
+  final PresetType type;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_PresetPill> createState() => _PresetPillState();
+}
+
+class _PresetPillState extends State<_PresetPill> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeFill = widget.type == PresetType.unique
+        ? const Color(0xFFEAF4EF)
+        : widget.type == PresetType.infinite
+        ? const Color(0xFFFAF3DF)
+        : const Color(0xFFF6EBE8);
+    final activeBorder = widget.type == PresetType.unique
+        ? AppTheme.seaweed
+        : widget.type == PresetType.infinite
+        ? AppTheme.inkBlack
+        : AppTheme.brandy;
+    final activeText = widget.type == PresetType.unique
+        ? AppTheme.seaweed
+        : widget.type == PresetType.infinite
+        ? AppTheme.inkBlack
+        : AppTheme.brandy;
+
+    return Tooltip(
+      message: '${widget.label} 3×3 preset',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 6),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: widget.selected
+                  ? activeFill
+                  : _hovered
+                  ? AppTheme.canvasBg
+                  : AppTheme.surfaceWhite,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: widget.selected ? activeBorder : AppTheme.borderSubtle,
+                width: widget.selected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: widget.dotColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: widget.selected
+                        ? FontWeight.w800
+                        : FontWeight.w600,
+                    color: widget.selected ? activeText : AppTheme.inkBlack,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+==> lib/views/widgets/animated_matrix_board.dart <==
+import 'package:flutter/material.dart';
+
+import '../../core/math/matrix.dart';
+import '../../core/theme/app_theme.dart';
+import '../../models/solution_result.dart';
+import '../../utils/app_constants.dart';
+import '../../viewmodels/solver_viewmodel.dart';
+
+class AnimatedMatrixBoard extends StatelessWidget {
+  const AnimatedMatrixBoard({super.key, required this.viewModel});
+
+  final SolverViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final step = viewModel.currentStep;
+    final matrix = step?.matrix;
+    final rows = matrix?.length ?? viewModel.rows;
+    final cols = matrix == null ? viewModel.cols : matrix.first.length - 1;
+
+    return Card(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppConstants.cardPadding),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSwitcher(
+                duration: AppConstants.stepTransitionDuration,
+                transitionBuilder: (child, animation) =>
+                    FadeTransition(opacity: animation, child: child),
+                child: Container(
+                  key: ValueKey(viewModel.currentStepIndex),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 22,
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (var r = 0; r < rows; r++)
+                              SizedBox(
+                                width: 46,
+                                height: 85,
+                                child: Center(child: _buildRowLabel(r)),
+                              ),
+                          ],
+                        ),
+                        Container(
+                          decoration: const BoxDecoration(
+                            border: Border.symmetric(
+                              vertical: BorderSide(
+                                color: AppTheme.inkBlack,
+                                width: 3.5,
+                              ),
+                            ),
+                          ),
+                          child: Stack(
+                            children: [
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  for (var r = 0; r < rows; r++)
+                                    _buildRow(r, cols, matrix),
+                                ],
+                              ),
+                              Positioned(
+                                left:
+                                    (AppConstants.stageCellWidth + 8) * cols +
+                                    11.5 +
+                                    10,
+                                top: 0,
+                                bottom: 0,
+                                child: Container(
+                                  width: 2.5,
+                                  color: AppTheme.inkBlack,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              if (viewModel.currentStepIndex == viewModel.steps.length - 1 &&
+                  viewModel.steps.isNotEmpty)
+                _buildSolutionSummary(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRow(int r, int cols, AugmentedMatrix? matrix) {
+    final step = viewModel.currentStep;
+    final isTarget =
+        r == step?.targetRow && r != step?.pivotRow && r != step?.sourceRow;
+    final isSource = r == step?.sourceRow || r == step?.pivotRow;
+    final fill = isTarget
+        ? AppTheme.canvasBg
+        : isSource
+        ? AppTheme.canvasBg
+        : Colors.transparent;
+    final borderColor = isTarget
+        ? AppTheme.brandy
+        : isSource
+        ? AppTheme.seaweed
+        : Colors.transparent;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        AnimatedContainer(
+          duration: AppConstants.stepTransitionDuration,
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.fromLTRB(11.5, 6, 11.5, 6),
+          decoration: BoxDecoration(
+            color: fill,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor, width: 1.5),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var c = 0; c < cols; c++) _buildCell(r, c, matrix),
+              const SizedBox(width: 22.5),
+              _buildCell(r, cols, matrix, isConstant: true),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRowLabel(int r) {
+    final step = viewModel.currentStep;
+    final isTarget =
+        r == step?.targetRow && r != step?.pivotRow && r != step?.sourceRow;
+    final isSource = r == step?.sourceRow || r == step?.pivotRow;
+
+    return AnimatedContainer(
+      duration: AppConstants.stepTransitionDuration,
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: isTarget
+            ? AppTheme.brandy
+            : isSource
+            ? AppTheme.seaweed
+            : AppTheme.subtleFill,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+          color: isTarget
+              ? AppTheme.brandy
+              : isSource
+              ? AppTheme.seaweed
+              : AppTheme.borderSubtle,
+        ),
+      ),
+      child: Text(
+        'R${AppConstants.variableSubscripts[r]}',
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+          color: isTarget || isSource ? Colors.white : AppTheme.textMuted,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCell(
+    int r,
+    int c,
+    AugmentedMatrix? matrix, {
+    bool isConstant = false,
+  }) {
+    final step = viewModel.currentStep;
+    final isPivot = r == step?.pivotRow && c == step?.pivotCol;
+    final isTargetCell =
+        r == step?.targetRow &&
+        c == step?.pivotCol &&
+        step?.targetRow != null &&
+        step?.pivotCol != null;
+    String text;
+    if (matrix == null) {
+      text = viewModel.grid[r][c].trim().isEmpty
+          ? '0'
+          : viewModel.grid[r][c].trim();
+    } else {
+      text = matrix[r][c].toString();
+    }
+
+    var fill = isConstant ? AppTheme.subtleFill : AppTheme.surfaceWhite;
+    if (isTargetCell) {
+      fill = AppTheme.brandy;
+    }
+    if (isPivot) fill = AppTheme.jasmine;
+
+    var borderColor = isTargetCell ? AppTheme.brandy : AppTheme.borderSubtle;
+    var borderWidth = isTargetCell ? 1.5 : 1.0;
+    if (isPivot) {
+      borderColor = AppTheme.inkBlack;
+      borderWidth = 2.0;
+    }
+
+    return AnimatedContainer(
+      duration: AppConstants.stepTransitionDuration,
+      width: AppConstants.stageCellWidth,
+      height: AppConstants.stageCellHeight,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor, width: borderWidth),
+      ),
+      child: Center(
+        child: Text(
+          text,
+          style: isPivot
+              ? AppTheme.matrixNumberStyle.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.inkBlack,
+                )
+              : AppTheme.matrixNumberStyle,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSolutionSummary() {
+    final result = viewModel.solutionResult;
+    if (result == null) return const SizedBox.shrink();
+    final lines = <String>[];
+    if (result.type == SolutionType.unique) {
+      for (var i = 0; i < result.values.length; i++) {
+        lines.add(
+          'x${AppConstants.variableSubscripts[i]} = ${result.values[i]}',
+        );
+      }
+    } else if (result.type == SolutionType.infinite) {
+      for (var i = 0; i < viewModel.cols; i++) {
+        final variable = 'x${AppConstants.variableSubscripts[i]}';
+        final value = result.parametricExpressions[i];
+        lines.add(
+          value == 'free'
+              ? '$variable is free'
+              : '$variable = ${value ?? 'free'}',
+        );
+      }
+    } else {
+      lines.add('No values satisfy all equations simultaneously.');
+    }
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.canvasBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.borderStrong),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            result.summary,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              color: AppTheme.inkBlack,
+            ),
+          ),
+          for (final line in lines)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(line, style: AppTheme.matrixNumberStyle),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+==> lib/views/widgets/matrix_input_grid.dart <==
+import 'package:flutter/material.dart';
+
+import '../../core/theme/app_theme.dart';
+import '../../utils/app_constants.dart';
+import '../../viewmodels/solver_viewmodel.dart';
+
+class MatrixInputGrid extends StatelessWidget {
+  const MatrixInputGrid({super.key, required this.viewModel});
+
+  final SolverViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: ValueKey(
+        '${viewModel.rows}_${viewModel.cols}_${viewModel.gridVersion}',
+      ),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              flex: viewModel.cols,
+              child: Row(
+                children: [
+                  for (var c = 0; c < viewModel.cols; c++)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Center(
+                          child: Text(
+                            'x${AppConstants.variableSubscripts[c]}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textMuted,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 18),
+            Expanded(
+              flex: 1,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: Center(
+                  child: Text(
+                    'b',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.seaweed,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: viewModel.cols,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var r = 0; r < viewModel.rows; r++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          children: [
+                            for (var c = 0; c < viewModel.cols; c++)
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  child: _buildCell(r, c),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 2,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                color: AppTheme.borderStrong,
+              ),
+              Expanded(
+                flex: 1,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var r = 0; r < viewModel.rows; r++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: _buildCell(
+                            r,
+                            viewModel.cols,
+                            isConstant: true,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCell(int row, int col, {bool isConstant = false}) {
+    return SizedBox(
+      height: AppConstants.inputCellHeight,
+      child: TextFormField(
+        key: ValueKey(
+          '${viewModel.gridVersion}_${viewModel.rows}_${viewModel.cols}_$row-$col',
+        ),
+        initialValue: viewModel.grid[row][col],
+        textAlign: TextAlign.center,
+        style: AppTheme.inputNumberStyle,
+        decoration: InputDecoration(
+          hintText: '0',
+          hintStyle: const TextStyle(color: AppTheme.textMuted),
+          filled: true,
+          fillColor: isConstant
+              ? const Color(0xFFF3F6F4)
+              : AppTheme.surfaceWhite,
+          enabledBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: AppTheme.borderSubtle),
+          ),
+          border: const OutlineInputBorder(
+            borderSide: BorderSide(color: AppTheme.borderSubtle),
+          ),
+        ),
+        onChanged: (value) => viewModel.updateCell(row, col, value),
+      ),
+    );
+  }
+}
+
+==> lib/views/widgets/operation_banner.dart <==
+import 'package:flutter/material.dart';
+
+import '../../core/theme/app_theme.dart';
+import '../../models/solution_result.dart';
+import '../../viewmodels/solver_viewmodel.dart';
+
+class OperationBanner extends StatelessWidget {
+  const OperationBanner({super.key, required this.viewModel});
+
+  final SolverViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final step = viewModel.currentStep;
+    final ready = viewModel.steps.isEmpty;
+    final result = viewModel.solutionResult;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.jasmine,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.inkBlack, width: 1.2),
+              ),
+              child: Text(
+                ready
+                    ? 'READY'
+                    : 'STEP ${viewModel.currentStepIndex + 1}/${viewModel.steps.length}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.inkBlack,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            if (!ready && step != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.inkBlack,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Text(
+                  step.operationType,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            if (!ready && step != null) const SizedBox(width: 12),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ready
+                              ? 'Initial Augmented Matrix [A | b]'
+                              : (step?.description ?? ''),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.inkBlack,
+                          ),
+                        ),
+                        if (ready)
+                          const Text(
+                            'Enter values or pick a preset, then press Solve.',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.textMuted,
+                            ),
+                          ),
+                        if (viewModel.errorMessage != null)
+                          Text(
+                            viewModel.errorMessage!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.brandy,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (!ready && step != null) ...[
+                    const SizedBox(width: 12),
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 280),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceWhite,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppTheme.inkBlack,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Text(
+                        step.formula,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.inkBlack,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (result != null) ...[
+              const SizedBox(width: 8),
+              _classificationBadge(result.type),
+            ],
+            const SizedBox(width: 8),
+            _legendChip('Pivot', AppTheme.jasmine),
+            const SizedBox(width: 8),
+            _legendChip('Source', AppTheme.seaweed),
+            const SizedBox(width: 8),
+            _legendChip('Target', AppTheme.brandy),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _classificationBadge(SolutionType type) {
+    final label = switch (type) {
+      SolutionType.unique => ('UNIQUE', AppTheme.seaweed),
+      SolutionType.infinite => ('INFINITE', AppTheme.jasmine),
+      SolutionType.noSolution => ('NO SOLUTION', AppTheme.brandy),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: label.$2,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: label.$2),
+      ),
+      child: Text(
+        label.$1,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: AppTheme.inkBlack,
+        ),
+      ),
+    );
+  }
+
+  Widget _legendChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceWhite,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.borderSubtle),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.inkBlack,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+==> lib/views/widgets/playback_controls.dart <==
+import 'package:flutter/material.dart';
+
+import '../../core/theme/app_theme.dart';
+import '../../viewmodels/solver_viewmodel.dart';
+
+class PlaybackControls extends StatelessWidget {
+  const PlaybackControls({super.key, required this.viewModel});
+
+  final SolverViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final stepCount = viewModel.steps.length;
+    final max = stepCount > 1 ? (stepCount - 1).toDouble() : 1.0;
+    final value = stepCount == 0
+        ? 0.0
+        : viewModel.currentStepIndex.clamp(0, stepCount - 1).toDouble();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Row(
+          children: [
+            IconButton(
+              style: IconButton.styleFrom(
+                backgroundColor: AppTheme.inkBlack,
+                foregroundColor: AppTheme.jasmine,
+              ),
+              tooltip: viewModel.isPlaying ? 'Pause' : 'Play',
+              onPressed: stepCount == 0 ? null : viewModel.togglePlayPause,
+              icon: Icon(
+                viewModel.isPlaying
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: stepCount == 0 ? null : viewModel.previousStep,
+              icon: const Icon(Icons.skip_previous_rounded),
+            ),
+            IconButton(
+              onPressed: stepCount == 0 ? null : viewModel.nextStep,
+              icon: const Icon(Icons.skip_next_rounded),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Step ${stepCount == 0 ? 0 : viewModel.currentStepIndex + 1} / $stepCount',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.inkBlack,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Slider(
+                value: value,
+                min: 0,
+                max: max,
+                divisions: stepCount > 1 ? stepCount - 1 : null,
+                onChanged: stepCount == 0
+                    ? null
+                    : (value) => viewModel.goToStep(value.round()),
+              ),
+            ),
+            const SizedBox(width: 12),
+            TextButton(
+              onPressed: viewModel.cyclePlaybackSpeed,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.seaweed,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${viewModel.playbackSpeed.toStringAsFixed(1)}x',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
