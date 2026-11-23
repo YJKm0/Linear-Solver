@@ -20,6 +20,7 @@ class OperationBanner extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         child: Row(
           children: [
+            // --- Step Status ---
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
@@ -59,6 +60,7 @@ class OperationBanner extends StatelessWidget {
                 ),
               ),
             if (!ready && step != null) const SizedBox(width: 12),
+            // --- Operation Description & Formula ---
             Expanded(
               child: Row(
                 children: [
@@ -138,6 +140,7 @@ class OperationBanner extends StatelessWidget {
               const SizedBox(width: 8),
               _classificationBadge(result.type),
             ],
+            // --- Matrix Legend ---
             const SizedBox(width: 8),
             _legendChip('Pivot', AppTheme.jasmine),
             const SizedBox(width: 8),

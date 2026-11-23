@@ -53,6 +53,8 @@ abstract class LinearSolverService {
     return result.isEmpty ? '0' : result;
   }
 
+  /// Performs forward elimination and records each row operation for visualization.
+  /// The flag controls whether rows above each pivot are cleared for reduced row-echelon form.
   ({List<SolverStep> steps, List<int> pivotColumns, int pivotRow})
   forwardEliminate(AugmentedMatrix work, {required bool eliminateAbove}) {
     final rows = work.length;

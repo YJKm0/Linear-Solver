@@ -34,6 +34,8 @@ class SolverViewModel extends ChangeNotifier {
   SolverStep? get currentStep => steps.isEmpty ? null : steps[currentStepIndex];
   bool get hasSolution => solutionResult != null;
 
+  /// Resizes the editable augmented matrix while preserving cells that still fit.
+  /// Resetting the solution prevents stale elimination steps from being shown for the new shape.
   void resizeGrid(int newRows, int newCols) {
     if (newRows < AppConstants.minDimension ||
         newRows > AppConstants.maxDimension ||
@@ -85,6 +87,8 @@ class SolverViewModel extends ChangeNotifier {
     _resetSolution();
   }
 
+  /// Parses the editable grid, runs the selected elimination strategy, and starts playback.
+  /// Invalid input is surfaced through the viewmodel so the UI can explain why solving failed.
   void solve() {
     stopPlayback();
     errorMessage = null;

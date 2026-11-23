@@ -5,6 +5,8 @@ import '../models/solver_step.dart';
 import 'linear_solver_service.dart';
 
 class GaussJordanService extends LinearSolverService {
+  /// Solves an augmented system by reducing it to reduced row-echelon form.
+  /// The recorded row operations let the UI visualize the complete elimination process.
   @override
   ({SolutionResult solution, List<SolverStep> steps}) solve(
     AugmentedMatrix matrix,

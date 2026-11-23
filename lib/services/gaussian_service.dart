@@ -5,6 +5,8 @@ import '../models/solver_step.dart';
 import 'linear_solver_service.dart';
 
 class GaussianService extends LinearSolverService {
+  /// Solves an augmented system using Gaussian elimination and back-substitution.
+  /// It also classifies inconsistent and underdetermined systems for the result summary.
   @override
   ({SolutionResult solution, List<SolverStep> steps}) solve(
     AugmentedMatrix matrix,
@@ -100,6 +102,8 @@ class GaussianService extends LinearSolverService {
     return rank;
   }
 
+  /// Builds variable expressions from free variables after forward elimination.
+  /// Backward substitution expresses each pivot variable in terms of those free variables.
   SolutionResult _parametricSolution(AugmentedMatrix matrix) {
     final cols = matrix.first.length - 1;
     final pivotColumns = <int>{};

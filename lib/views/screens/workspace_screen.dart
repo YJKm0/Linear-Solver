@@ -19,6 +19,7 @@ class WorkspaceScreen extends StatelessWidget {
     return Scaffold(
       body: Row(
         children: [
+          // --- Left Sidebar: Dimension Controls & Matrix Input ---
           Expanded(
             flex: AppConstants.sidebarFlex,
             child: Padding(
@@ -26,12 +27,14 @@ class WorkspaceScreen extends StatelessWidget {
               child: _buildSidebar(),
             ),
           ),
+          // --- Main Stage: Operation Banner, Matrix Board & Playback ---
           Expanded(
             flex: AppConstants.stageFlex,
             child: Padding(
               padding: const EdgeInsets.all(AppConstants.screenPadding),
               child: Column(
                 children: [
+                  // --- Operation Status ---
                   Expanded(
                     flex: AppConstants.bannerFlex,
                     child: ListenableBuilder(
@@ -41,6 +44,7 @@ class WorkspaceScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppConstants.screenPadding),
+                  // --- Animated Elimination Matrix ---
                   Expanded(
                     flex: AppConstants.matrixStageFlex,
                     child: ListenableBuilder(
@@ -50,6 +54,7 @@ class WorkspaceScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppConstants.screenPadding),
+                  // --- Playback Navigation ---
                   Expanded(
                     flex: AppConstants.controlsFlex,
                     child: ListenableBuilder(
@@ -67,6 +72,7 @@ class WorkspaceScreen extends StatelessWidget {
     );
   }
 
+  /// Builds the control panel for matrix dimensions, presets, input, and solving.
   Widget _buildSidebar() {
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -77,6 +83,7 @@ class WorkspaceScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // --- Sidebar Header & Method Badge ---
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: const BoxDecoration(color: AppTheme.inkBlack),
@@ -121,6 +128,7 @@ class WorkspaceScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // --- Matrix Dimensions ---
                   Row(
                     children: [
                       Expanded(
@@ -187,6 +195,7 @@ class WorkspaceScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppConstants.sectionSpacing),
+                  // --- Elimination Method ---
                   ListenableBuilder(
                     listenable: viewModel,
                     builder: (context, _) => SegmentedButton<bool>(
@@ -205,6 +214,7 @@ class WorkspaceScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppConstants.sectionSpacing),
+                  // --- Matrix Presets ---
                   ListenableBuilder(
                     listenable: viewModel,
                     builder: (context, _) => Row(
@@ -249,6 +259,7 @@ class WorkspaceScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppConstants.sectionSpacing),
+                  // --- Augmented Matrix Editor ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -290,6 +301,7 @@ class WorkspaceScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppConstants.sectionSpacing),
+                  // --- Solve Action ---
                   ElevatedButton.icon(
                     onPressed: viewModel.solve,
                     icon: const Icon(

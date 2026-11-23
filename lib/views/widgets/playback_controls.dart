@@ -21,6 +21,7 @@ class PlaybackControls extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Row(
           children: [
+            // --- Playback Navigation ---
             IconButton(
               style: IconButton.styleFrom(
                 backgroundColor: AppTheme.inkBlack,
@@ -44,6 +45,7 @@ class PlaybackControls extends StatelessWidget {
               icon: const Icon(Icons.skip_next_rounded),
             ),
             const SizedBox(width: 12),
+            // --- Step Timeline ---
             Text(
               'Step ${stepCount == 0 ? 0 : viewModel.currentStepIndex + 1} / $stepCount',
               style: const TextStyle(
@@ -65,6 +67,7 @@ class PlaybackControls extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
+            // --- Playback Speed ---
             TextButton(
               onPressed: viewModel.cyclePlaybackSpeed,
               child: Container(

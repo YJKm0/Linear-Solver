@@ -17,6 +17,7 @@ class MatrixInputGrid extends StatelessWidget {
       ),
       mainAxisSize: MainAxisSize.min,
       children: [
+        // --- Variable Headers ---
         Row(
           children: [
             Expanded(
@@ -62,6 +63,7 @@ class MatrixInputGrid extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
+        // --- Coefficients, Divider & Constants ---
         IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,6 +125,7 @@ class MatrixInputGrid extends StatelessWidget {
     );
   }
 
+  /// Builds one editable matrix entry and connects changes to the viewmodel grid.
   Widget _buildCell(int row, int col, {bool isConstant = false}) {
     return SizedBox(
       height: AppConstants.inputCellHeight,

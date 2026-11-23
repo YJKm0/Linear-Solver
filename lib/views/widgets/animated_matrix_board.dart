@@ -25,6 +25,7 @@ class AnimatedMatrixBoard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // --- Animated Matrix State ---
               AnimatedSwitcher(
                 duration: AppConstants.stepTransitionDuration,
                 transitionBuilder: (child, animation) =>
@@ -41,6 +42,7 @@ class AnimatedMatrixBoard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        // --- Row Labels ---
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -52,6 +54,7 @@ class AnimatedMatrixBoard extends StatelessWidget {
                               ),
                           ],
                         ),
+                        // --- Matrix Brackets & Augmented Divider ---
                         Container(
                           decoration: const BoxDecoration(
                             border: Border.symmetric(
@@ -179,6 +182,8 @@ class AnimatedMatrixBoard extends StatelessWidget {
     );
   }
 
+  /// Renders a matrix entry with pivot and target styling for the current step.
+  /// The constant column receives distinct styling to preserve the augmented-matrix boundary.
   Widget _buildCell(
     int r,
     int c,
@@ -238,6 +243,7 @@ class AnimatedMatrixBoard extends StatelessWidget {
     );
   }
 
+  /// Builds the final classification and variable values beneath the completed matrix.
   Widget _buildSolutionSummary() {
     final result = viewModel.solutionResult;
     if (result == null) return const SizedBox.shrink();
